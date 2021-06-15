@@ -6,11 +6,11 @@
 #                                                                                        #
 ##########################################################################################
 
+# Last update: June, 2021
+
 
 # Code written and mantained by Marie-Christine Rufener
-# Contact < macrufener@gmail.com > to report any code issues
-
-# Last update: June, 2021
+# Contact < macrufener@gmail.com > to report any query or code issues.
 
 
 # This script selects randomly samples (i.e. hauls) from both commercial fisheries
@@ -54,7 +54,6 @@ data specialist Josefine Egekvist (jsv@aqua.dtu.dk) and Marie Storr-Paulsen (msp
 
 
 nsimu <- 500 # Choose the amount of simulations
-AREA <- c("KAT","WBS","FULL")[3] #Choose whether model should be applied for each stock (KAT or WBS), or both togehter (FULL)
 YEAR <- c("2015","2016")[2]
 
 
@@ -156,14 +155,9 @@ load("commercial_NEW.RData"); comFULL <- tester2; rm(tester2)  #obo-dfad dataset
 #comFULL <- readRDS("commercial.rds") #Full commercial dataset (obo-dfad-vms-logbook)
 
 
-## Subset dataset according to pre-defined area
-if(AREA=="WBS"){
-  com <- subset(comFULL,Area %in% c("22","23","24") & Year == YEAR) # if only WBS cod should be modelled
-} else if(AREA=="KAT"){
-  com <- subset(comFULL,Area %in% c("21") & Year == YEAR) # if only KAT cod should be modelled
-} else if(AREA=="FULL"){
-  com <- subset(comFULL,Year == YEAR) # if only WBS cod should be modelled
-}
+#Subset dataset according to pre-defined inputs
+com <- subset(comFULL,Year == YEAR) # if only WBS cod should be modelled
+
 
 
 ## Create 6+ group
@@ -190,13 +184,6 @@ sur$timeyear  <- as.factor(paste(sur$Year,sur$Data,sep=":"))
 sur$timeyear2  <- as.factor(paste(sur$Year,sur$Quarter,sur$Data,sep=":"))
 
 
-if(AREA=="WBS"){
-  survey <- subset(sur,Area %in% c("22","23","24")) # if only WBS cod should be modelled
-} else if(AREA=="KAT"){
-  survey <- subset(sur,Area %in% c("21")) # if only KAT cod should be modelled
-} else if(AREA=="FULL"){
-  survey <- sur # if only WBS cod should be modelled
-}
 
 
 
