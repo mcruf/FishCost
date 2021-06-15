@@ -10,68 +10,52 @@
 
 
 # Code written and mantained by Marie-Christine Rufener
-# Contact < macrufener@gmail.com > to report any query or code issues.
-
-
-# This script selects randomly samples (i.e. hauls) from both commercial fisheries
-# and scientific surveys to generate abundance indices based on the LGNB spatio-temporal
-# species distibution model (Rufener et al., 2021). For illustration purposes, data from 
-# the Danish sampling programmes are used*. 
-
-
-# *Note that due to confidentiality issues in the commercial fisheries data, only a subset
-# of the original data were provided, with sensitive information excluded and catch values
-# reshuffled. 
+# Contact < macrufener@gmail.com > for any query or to report code issues.
 
 
 
-
-DTU Aqua has a data agreement with the Danish Ministry for Food, Agriculture and Fisheries  
-where DTU receive commercial fisheries data as part of an agreement on science based advice, 
-to be used for obligations under the EU Data Collection Framework (EU 2017/1004), advice  and research.
-DTU Aqua does not have permission to forward these data un-aggregated to third part due to data
-sensitivity under the GDPR regulation. However, aggregated commercial fisheries data are provided
-in the Zenodo repository (https://doi.org/10.5281/zenodo.4506948) in addition to a toy dataset that
-mimicks the original fisheries data as well as the original scientific survey data. 
-Further and more detailed information on the commercial fisheries data can be obtained with DTU Aqua´s
-data specialist Josefine Egekvist (jsv@aqua.dtu.dk) and Marie Storr-Paulsen (msp@aqua.dtu.dk). 
+# This script selects randomly samples (i.e. hauls) given the input scenario* to
+# generate abundance indices. Abundances are estimated according to the LGNB spatio-temporal 
+# species distibution model (for details see Rufener et al., 2021; doi: ..... ).
+# For exemplification, data from the Danish sampling programmes are used along this GitHub repository (as in the paper).
+# This includes data from (i) IBTS survey and (ii) on-board observers program**. 
 
 
 
+## *Note:
+##  A scenario could be, for example, defined as selecting 75% of the commercial data,
+##  25% of the survey Q1 data and 50% of the survey Q4 data. The simulation is then made upon 
+##  selecting randomly the data percentages within each scenario.
+
+## **Note: 
+##   DTU Aqua has a data agreement with the Danish Ministry for Food, Agriculture and Fisheries  
+##   where DTU receive commercial fisheries data as part of an agreement on science based advice, 
+##   to be used for obligations under the EU Data Collection Framework (EU 2017/1004), advice  and research.
+##   DTU Aqua does not have permission to forward these data un-aggregated to third part due to data
+##   sensitivity under the GDPR regulation. As a toy dataset for the current repository, a toy dataset is provided
+##   which is based on a smaller fraction of the original data, where critical information were omitted and 
+##   haul locations fully simulated.
 
 
-
-# We simulate a random selection of the hauls from both commercial fisheries and survey dataset.
-# The survey dataset is decomposed further into first and fourth quarter, as we are also
-# interested in evaluating
-# scenarios where we do not have any fourth quarter surveys. 
-# A scenario could be, for example, defined as selecting 75% of the commercial data,
-# 25% of the survey Q1 data and 50% of the 
-# survey Q4 data.The simulation is then made upon selecting randomly the data 
-# percentages within each scenario 
-# (e.g., run 500 times the script, where the a scenario is ranodmly selected each given time).
+#><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
 
+#~~~~~~~~~~~~~~~~~~~~
+# 1) Default inputs
+#~~~~~~~~~~~~~~~~~~~~
 
-nsimu <- 500 # Choose the amount of simulations
-YEAR <- c("2015","2016")[2]
+nsimu <- 10 #No. of simulations; in original paper, nsimu=500
 
 
-
-#~~~~~~~~~~~~~~~~~~~~~~~~
-# 1) Model configuration
-#~~~~~~~~~~~~~~~~~~~~~~~~
 
 # For scripting
-#~~~~~~~~~~~~~~~
-INCLUDE  <- c("commercial", "survey", "both") [3]
-MODEL_CONFIG <- "m2_Ntot" #Default model and AgeGroup
-MODEL_CONFIG <- strsplit(MODEL_CONFIG, "_")[[1]]
-MODEL_FORMULA <- MODEL_CONFIG[1]
-AGE <- MODEL_CONFIG[2]
+#~~~~~~~~~~~~~~~~
+# Especially useful when running script on hpc through Makefile
+YEAR <- c("2015","2016")[2] #Choose year from data for which abundance index should be estimated; default is 2016
+SPECIES <- c("cod","plaice","herring") #Choose species of interest
+DATA  <- c("commercial", "survey", "both") [3] #
 
-
-input <- parse(text=Sys.getenv("SCRIPT_INPUT"))
+input <- parse(text=Sys.getenv("SCRIPT_INPUT")) #See Makefile in folder
 print(input)
 eval(input)
 
@@ -80,7 +64,8 @@ eval(input)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2) Loading basic functions and libraries
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-if(.Platform$OS.type == "windows") setwd("C:/Users/mruf/Documents/PHD_projects/Proj_2/CostEffect/Cod")
+if(.Platform$OS.type == "windows") setwd("~/FishCost/src/")
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 source("utilities.R")
 
 #devtools::install_github("kaskr/gridConstruct",subdir="gridConstruct")
@@ -140,7 +125,7 @@ scenarios <- scenarios[-c(idx2,idx3,idx4,idx5,idx6,idx7),]
 rownames(scenarios) <- NULL
 
 
-scenarios <- subset(scenarios, Data==INCLUDE)
+scenarios <- subset(scenarios, Data==DATA)
 rownames(scenarios) <- NULL
 
 
@@ -241,10 +226,10 @@ for(s in 1:nrow(scenarios)){
     SCENARIO_COM <- strsplit(scenarios$structure, "_")[[s]][1]
     SCENARIO_SURQ1 <- strsplit(scenarios$structure, "_")[[s]][2]
     SCENARIO_SURQ4 <- strsplit(scenarios$structure, "_")[[s]][3]
-    #INCLUDE <- strsplit(scenarios$structure, "_")[[s]][4]
+    #DATA <- strsplit(scenarios$structure, "_")[[s]][4]
     
     ## Validate script input
-    stopifnot(INCLUDE %in% c("commercial", "survey", "both"))
+    stopifnot(DATA %in% c("commercial", "survey", "both"))
     
     
     # 6.2) Define the support area
@@ -254,7 +239,7 @@ for(s in 1:nrow(scenarios)){
     # Check for the NBCP script to see the alpha & support_area speicifcations
     
     # We go from the assumption that survey data has ALWAYS only one support area; one can choose whether to estimate the alpha-parameter or not. 
-    # if(INCLUDE=="survey"){
+    # if(DATA=="survey"){
     #   SUPPORT_AREA <- "One" 
     #   ALPHA <- c("No","Single I")[2] # Default is Multi alphas for commercial; this automatically implies in several support areas
     # }
@@ -309,11 +294,11 @@ for(s in 1:nrow(scenarios)){
     age_sur   <- transform(survey2, latStart=lat, lonStart=lon, latEnd=lat, lonEnd=lon,
                            HLID=haul.id, numYear = as.numeric(as.character(Year)))
     
-    if (INCLUDE == "both"){
+    if (DATA == "both"){
       datatot <- mybind(age_com, age_sur)
-    } else if (INCLUDE == "survey") {
+    } else if (DATA == "survey") {
       datatot <- age_sur
-    } else if (INCLUDE == "commercial")
+    } else if (DATA == "commercial")
       datatot <- age_com
     
     
@@ -427,15 +412,15 @@ for(s in 1:nrow(scenarios)){
     
     # 6.7.3) Setting support areas based on chosen input
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if(INCLUDE == "commercial" & SUPPORT_AREA == "Several"){
+    if(DATA == "commercial" & SUPPORT_AREA == "Several"){
       SupportAreaMatrix2[] <- SupportAreaMatrix[,1]
       SupportAreaMatrix <- SupportAreaMatrix2 
-    } else if(INCLUDE == "both" & SUPPORT_AREA == "Several"){
+    } else if(DATA == "both" & SUPPORT_AREA == "Several"){
       SupportAreaMatrix2[,1:(ncol(SupportAreaMatrix2)-1)] <- SupportAreaMatrix[,1]
       SupportAreaMatrix <- SupportAreaMatrix2 
-    } else if(INCLUDE == "commercial" & SUPPORT_AREA == "One"){
+    } else if(DATA == "commercial" & SUPPORT_AREA == "One"){
       SupportAreaMatrix <- SupportAreaMatrix
-    } else if (INCLUDE == "both" & SUPPORT_AREA =="One"){
+    } else if (DATA == "both" & SUPPORT_AREA =="One"){
       SupportAreaMatrix <- SupportAreaMatrix
     }
     
@@ -571,11 +556,11 @@ for(s in 1:nrow(scenarios)){
       map <- list()
       if(TRUE) map$logsd_nugget <- factor(NA)
       
-      if(ALPHA == "No" & INCLUDE == "both"){
+      if(ALPHA == "No" & DATA == "both"){
         map$alpha <- factor(rep(NA,nlevels(data$SupportAreaGroup)))
-      } else if(ALPHA == "No" & INCLUDE == "commercial") {
+      } else if(ALPHA == "No" & DATA == "commercial") {
         map$alpha <- factor(rep(NA,nlevels(data$SupportAreaGroup)))
-      } else if(ALPHA == "No" & INCLUDE == "survey"){
+      } else if(ALPHA == "No" & DATA == "survey"){
         map$alpha <- factor(rep(NA,nlevels(data$SupportAreaGroup)))
       } else if(ALPHA == "Single I"){
         # map$alpha = factor(map$alpha)
@@ -656,9 +641,9 @@ for(s in 1:nrow(scenarios)){
     
     ## Fit model
     if (MODEL_FORMULA == "m2") {
-      if(INCLUDE == "commercial"){
+      if(DATA == "commercial"){
         m2 <- buildModelMatrices(~  -1 + YearQuarter + offset(log(HaulDur)), ~metiers-1 + VE_LENcat-1, data=datatot)
-      } else if(INCLUDE == "survey"){
+      } else if(DATA == "survey"){
         m2 <- buildModelMatrices(~ -1 + YearQuarter + offset(log(HaulDur)), data=datatot)
       } else {
         m2 <- buildModelMatrices(~ -1 + Data + YearQuarter + offset(log(HaulDur)), ~metiers-1 + VE_LENcat-1, data=datatot)
