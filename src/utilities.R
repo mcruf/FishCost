@@ -48,7 +48,7 @@ GridConstruct <- function(d, km,scale,nearestObs){
   ## Grid
   gr <- gridConstruct::gridConstruct(d=d,km=km,scale=scale,nearestObs=nearestObs,filter=FALSE)
   ## Read shape file data
-  shape <- readOGR(".", "CDK2_cutted") #Importing contracted DK shapefile with width=-0.010
+  shape <- readOGR("~/FishCost/Shapefiles", "CDK2_cutted") #Importing contracted DK shapefile with width=-0.010
   proj4string(shape) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0")
   map <- spTransform(shape,CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"))
   gr2 <- as.data.frame(gr)
