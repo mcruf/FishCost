@@ -47,13 +47,12 @@
 nsimu <- 10 #No. of simulations; in original paper, nsimu=500
 
 
-
 # For scripting
 #~~~~~~~~~~~~~~~~
 # Especially useful when running script on hpc through Makefile
-YEAR <- c("2015","2016")[2] #Choose year from data for which abundance index should be estimated; default is 2016
-SPECIES <- c("cod","plaice","herring") #Choose species of interest
-DATA  <- c("commercial", "survey", "both") [3] #
+YEAR <- c("2015","2016")[1] #Choose year from data for which abundance index should be estimated; default is 2015
+SPECIES <- c("cod","plaice","herring") [1] #Choose species of interest; default is cod
+DATA  <- c("both", "commercial", "survey") [1] #Choose input data for which scenarios will be run; default is both (commercial + survey)
 
 input <- parse(text=Sys.getenv("SCRIPT_INPUT")) #See Makefile in folder
 print(input)
@@ -68,40 +67,39 @@ if(.Platform$OS.type == "windows") setwd("~/FishCost/src/")
 #setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 source("utilities.R")
 
-#devtools::install_github("kaskr/gridConstruct",subdir="gridConstruct")
+#devtools::install_github("kaskr/gridConstruct",subdir="gridConstruct") #Install gridConstruct package to build grid later below
 mLoad(raster,rgeos,maptools,maps,data.table,dplyr,TMB,sp,DATRAS,gridConstruct,rgdal,geosphere,devtools,plyr,fields,forcats,gtools)
-
 
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 3) Setting-up the scenarios
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# We have in total 125 scenarios (5*5*5); However, 6 scenarios will be removed, namely:
-# 1) scenario where no data are selected at all from the three cases (Com=0, SurQ1=0, SurQ4=0)
-# 2) scenario where the full dataset are selected for all three cases (Com=1, SurQ1=1, SurQ4=1); This needs to be run only once, and not 500 times
-# 3) scenario where the full dataset is selected for either commercial or survey when the oter is null
-# (Com=0, SurQ1=1, SurQ4=1), (Com=0, SurQ1=0, SurQ4=1), (Com=0, SurQ1=1, SurQ4=0), (Com=1, SurQ1=0, SurQ4=0), 
+# We have in total 125 scenarios (5^3) based on the level of the amount of data (in %) that will be selected in
+# the dataset (Commercial, Survey-Q1, Survey-Q4). From these scenarios, 8 will be removed, namely:
+# 1) Case where no data are selected in any of the three datasets (when Com=0%, SurQ1=0%, SurQ4=0%)
+# 2) Cases where the full amount of data are selected in all three datasets (Com=100%, SurQ1=100%, SurQ4=100%)
+#     - This is the baseline adopted in the paper and needs to be run only once, and not nsim times!
+# 3) Cases where the full amount of data is selected in one of the datasets and the other is not selected at all.
+#     - (Com=0, SurQ1=1, SurQ4=1)
+#     - (Com=0, SurQ1=0, SurQ4=1)
+#     - (Com=0, SurQ1=1, SurQ4=0)
+#     - (Com=1, SurQ1=0, SurQ4=0)
+#     - (Com=1, SurQ1=1, SurQ4=0)
+#     - (Com=1, SurQ1=0, SurQ4=1)
+#     *Note: Any of the above options (3) could be chosen as baseline instead of the case where Com=1, SurQ1=1, SurQ4=1
 
 
 
-# Generate all possible combinations
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pos <- c(0, 0.25, 0.50, 0.75, 1)
+# 3.1) Generate all possible data selection combination (i.e., scenrio)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+pos <- c(0, 0.25, 0.50, 0.75, 1) #From 0 to 100%, with 25% increase of data selection
 scenarios <- as.data.frame(permutations(n=5,r=3,v=pos,repeats.allowed=T)) # Create all possible combinations (125 scenarios)
 colnames(scenarios) <- c("COM","SURQ1","SURQ4")
 
-# Remove the some unnecessary scenarios 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-idx0 <- which(rowSums(scenarios)==0) #(Com=0, SurQ1=0, SurQ4=0) 
-idx1 <- which(rowSums(scenarios)==3) #(Com=1, SurQ1=1, SurQ4=1)
 
-scenarios <- scenarios[-c(idx0,idx1),]
-rownames(scenarios) <- NULL
-
-
-# Include a data-specific identifier column
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 3.2) Include a data-specific identifier column
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 idxSur <- which(scenarios[,1]==0) #Identifies scenarios where no commercial data is used (thus, only survey)
 idxCom <- which(scenarios[,2]==0 & scenarios[,3]==0) #Identifies scenarios where no survey data is used (thus, only commercial)
 
@@ -112,19 +110,24 @@ scenarios[idxCom,"Data"] <- "commercial"
 scenarios$structure <- paste(scenarios[,1],scenarios[,2],scenarios[,3],scenarios[,4],sep="_")
 
 
-# Remove additional unnecessary scenarios
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 3.3) Remove unused scenarios
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+idx1 <- which(scenarios[,"COM"]==0 & scenarios[,"SURQ1"]==0 & scenarios[,"SURQ4"]==0) #(Com=0, SurQ1=0, SurQ4=0) 
 idx2 <- which(scenarios[,"COM"]==0 & scenarios[,"SURQ1"]==1 & scenarios[,"SURQ4"]==1) #(Com=0, SurQ1=1, SurQ4=1) 
 idx3 <- which(scenarios[,"COM"]==1 & scenarios[,"SURQ1"]==0 & scenarios[,"SURQ4"]==0) #(Com=1, SurQ1=0, SurQ4=0) 
 idx4 <- which(scenarios[,"COM"]==0 & scenarios[,"SURQ1"]==1 & scenarios[,"SURQ4"]==0) #(Com=0, SurQ1=1, SurQ4=0) 
 idx5 <- which(scenarios[,"COM"]==0 & scenarios[,"SURQ1"]==0 & scenarios[,"SURQ4"]==1) #(Com=0, SurQ1=0, SurQ4=1) 
 idx6 <- which(scenarios[,"COM"]==1 & scenarios[,"SURQ1"]==1 & scenarios[,"SURQ4"]==0) #(Com=1, SurQ1=1, SurQ4=0) 
 idx7 <- which(scenarios[,"COM"]==1 & scenarios[,"SURQ1"]==0 & scenarios[,"SURQ4"]==1) #(Com=1, SurQ1=0, SurQ4=1) 
+idx8 <- which(scenarios[,"COM"]==1 & scenarios[,"SURQ1"]==1 & scenarios[,"SURQ4"]==1) #(Com=1, SurQ1=0, SurQ4=1) 
 
-scenarios <- scenarios[-c(idx2,idx3,idx4,idx5,idx6,idx7),]
+scenarios <- scenarios[-c(idx1,idx2,idx3,idx4,idx5,idx6,idx7,idx8),]
 rownames(scenarios) <- NULL
 
 
+# 3.4) Subset scenarios according to input data
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#To be used later in the simulation loop
 scenarios <- subset(scenarios, Data==DATA)
 rownames(scenarios) <- NULL
 
@@ -134,53 +137,28 @@ rownames(scenarios) <- NULL
 # 4) Load fishery-depedent and independent datasets
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# Load fishery-depedent dataset
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-load("commercial_NEW.RData"); comFULL <- tester2; rm(tester2)  #obo-dfad dataset
-#comFULL <- readRDS("commercial.rds") #Full commercial dataset (obo-dfad-vms-logbook)
+setwd("~/FishCost/Data/") #Set path to Data folder
 
 
-#Subset dataset according to pre-defined inputs
-com <- subset(comFULL,Year == YEAR) # if only WBS cod should be modelled
+# 4.1) Load fishery-depedent data
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+com <- readRDS(paste("com","_", SPECIES,".rds",sep=""))
+
+com <- subset(com,Year == YEAR) #Subset dataset according to pre-defined inputs
 
 
 
-## Create 6+ group
-com[,"age_6"] <- rowSums(com[,c("age_6","age_7","age_8")])
-com$age_7 <- NULL
-com$age_8 <- NULL
+# 4.2) Load fishery-indepedent data
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+sur <- readRDS(paste("sur","_", SPECIES,".rds",sep=""))
 
-
-## Create a Ntot column (sum over all ages, total abundance)
-com$Ntot <- rowSums(com[,c("age_1","age_2","age_3","age_4","age_5","age_6")])
-
-## Include an age-0 column (to be equal as the survey)
-# NOTE: I HAVE TO CHECK WHETER THIS HAS AN EFFECT WHEN MODELLING age_0 
-com$age_0 <- rep(0,nrow(com))
+sur <- subset(sur,Year == YEAR) #Subset dataset according to pre-defined inputs
 
 
 
 
-# Load fishery-indepedent dataset
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-sur <- readRDS("survey_NEW.rds") 
-sur$Data  <- as.factor(rep("survey",nrow(sur)))
-sur$timeyear  <- as.factor(paste(sur$Year,sur$Data,sep=":"))
-sur$timeyear2  <- as.factor(paste(sur$Year,sur$Quarter,sur$Data,sep=":"))
-
-
-
-
-
-
-## Create a Ntot column (sum over all ages, total abundance)
-survey$Ntot <- rowSums(survey[,c("age_0","age_1","age_2","age_3","age_4","age_5","age_6")])
-
-
-
-
-stopifnot(levels(factor(com$Year))==levels(factor(survey$Year))) # Security check
-
+### Checkpoint ###
+stopifnot(levels(factor(com$Year))==levels(factor(sur$Year))) 
 
 
 
@@ -188,22 +166,13 @@ stopifnot(levels(factor(com$Year))==levels(factor(survey$Year))) # Security chec
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 5) Build grid for the study area
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Note: Grid for both commercial and survey data have to be the same.
+# It doesn't matter wheter the grid is constructed upon the commercial or survey data, 
+# as long as it is consistent across data types (commercial, survey or both)
 
-# Creating a dataframe with mean values of long and lat
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-comFULL$lon_mean <- rowMeans(comFULL[,c("lonStart", "lonEnd")])
-comFULL$lat_mean <- rowMeans(comFULL[,c("latStart", "latEnd")])
-df <- data.frame(lon=comFULL$lon_mean, lat=comFULL$lat_mean)
-
-
-# Building the grid
-#~~~~~~~~~~~~~~~~~~~~
-grid <- gridConstruct3(df,km=5,scale=1.2)
-gr <- gridFilter(grid,df,icesSquare = T,connected=T)
+grid <- GridConstruct(sur[,c("lon","lat")],km=5,scale=1.2) #Modified function from original gridConstruct. See "utilities.R" to see changes
+gr <- GridFilter(grid,df,icesSquare = T,connected=T) # filter out unnecessary spatial extensions; #Modified function from original gridConstruct. See "utilities.R" to see changes
 # plot(gr)
-# plot(DK_map,add=T,fill=T,col="grey70")
-
-
 
 
 

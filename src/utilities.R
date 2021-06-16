@@ -107,7 +107,7 @@ studyarea <- c(Kattegat,Belt,Sound,Baltic_Sea,Extrasquares)
 ##' @param connected Keep only largest connected component.
 ##' @return Filtered grid object
 ##' @rdname grid
-gridFilter2 <- function(grid,data,
+GridFilter <- function(grid,data,
                        icesSquare=FALSE,
                        nearestObs=Inf,
                        wet=FALSE,
