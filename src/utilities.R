@@ -40,9 +40,11 @@ mybind <- function(x, y) {
 
 # Constructing grid based on existing shapefile
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Modified from K. Kristensen's original function from gridConstruct package
+# https://github.com/kaskr/gridConstruct/blob/master/gridConstruct/R/grid.R
 
 # Use this function if using the contracted versions of the DK shapefile;
-gridConstruct2 <- function(d, km,scale,nearestObs){
+GridConstruct <- function(d, km,scale,nearestObs){
   ## Grid
   gr <- gridConstruct::gridConstruct(d=d,km=km,scale=scale,nearestObs=nearestObs,filter=FALSE)
   ## Read shape file data
