@@ -53,6 +53,9 @@ nsimu <- 10 #No. of simulations; in original paper, nsimu=500
 YEAR <- c("2015","2016")[1] #Choose year from data for which abundance index should be estimated; default is 2015
 SPECIES <- c("cod","plaice","herring") [1] #Choose species of interest; default is cod
 DATA  <- c("both", "commercial", "survey") [1] #Choose input data for which scenarios will be run; default is both (commercial + survey)
+PS <- c("No","One","Two")[1] #Define how the sampling nature should be accounted for; default is that no preferential sampling is accounted for in the commercial
+
+
 
 input <- parse(text=Sys.getenv("SCRIPT_INPUT")) #See Makefile in folder
 print(input)
@@ -144,7 +147,7 @@ setwd("~/FishCost/Data/") #Set path to Data folder
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 com <- readRDS(paste("com","_", SPECIES,".rds",sep=""))
 
-com <- subset(com,Year == YEAR) #Subset dataset according to pre-defined inputs
+com <- subset(com,Year == YEAR); com$Year <- factor(com$Year) #Subset dataset according to pre-defined inputs
 
 
 
@@ -152,13 +155,13 @@ com <- subset(com,Year == YEAR) #Subset dataset according to pre-defined inputs
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 sur <- readRDS(paste("sur","_", SPECIES,".rds",sep=""))
 
-sur <- subset(sur,Year == YEAR) #Subset dataset according to pre-defined inputs
+sur <- subset(sur,Year == YEAR); sur$Year <- factor(sur$Year) #Subset dataset according to pre-defined inputs
 
 
 
 
 ### Checkpoint ###
-stopifnot(levels(factor(com$Year))==levels(factor(sur$Year))) 
+stopifnot(levels(com$Year)==levels(sur$Year)) #Check that both datasets were subsetted for the same year
 
 
 
@@ -177,16 +180,18 @@ gr <- GridFilter(grid,df,icesSquare = T,connected=T) # filter out unnecessary sp
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 6) Start with the simulations
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 6) Go for the simulations
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 for(s in 1:nrow(scenarios)){
   for(i in 1:nsimu){
     
+    
+    #FIXME: CHECK WHETHER THE TWO LINES BELOW ARE REALLY NECESSARY
     if(.Platform$OS.type == "windows") setwd("C:/Users/mruf/Documents/PHD_projects/Proj_2/CostEffect/Cod")
     
-    setwd("/zhome/25/f/124809/PHD_projects/Proj_2/CostEffect/Cod")
+    #setwd("PATH_IN_HPC") #Turn-on if running on hpc
     
     
     
@@ -197,83 +202,59 @@ for(s in 1:nrow(scenarios)){
     SCENARIO_SURQ4 <- strsplit(scenarios$structure, "_")[[s]][3]
     #DATA <- strsplit(scenarios$structure, "_")[[s]][4]
     
-    ## Validate script input
-    stopifnot(DATA %in% c("commercial", "survey", "both"))
     
     
-    # 6.2) Define the support area
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    SUPPORT_AREA <- c("One","Several")[1] #Choose whether to use one or several support areas to describe the commercial fisheries data; Survey data is described by only single support area
-    ALPHA <- c("No","Single I","Single II", "Multi")[2] #Choose whether anhd how model should consider preferrential sampling parameter (alpha) or not.
-    # Check for the NBCP script to see the alpha & support_area speicifcations
-    
-    # We go from the assumption that survey data has ALWAYS only one support area; one can choose whether to estimate the alpha-parameter or not. 
-    # if(DATA=="survey"){
-    #   SUPPORT_AREA <- "One" 
-    #   ALPHA <- c("No","Single I")[2] # Default is Multi alphas for commercial; this automatically implies in several support areas
-    # }
+    ### Checkpoint ###
+    stopifnot(DATA %in% c("commercial", "survey", "both")) #Validate script input
     
     
     
+    # 6.2) Subset dataframes according to input scenario 
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
-    # 6.3) Subset dataframes according to the simulated scenario 
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    
-    
-    # 6.3.1) Fishery dependent data
+    # 6.2.1) Fishery dependent data
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ## Sample only a fraction of the commercial data (fractions are the SCENARIOS_COM stated in the beginning)
     commercial <- as.data.frame(com %>% sample_frac(as.numeric(SCENARIO_COM)))
+  
     
-    
-    ## Remove unused columns
-    commercial[,c("logBldNr","sampleId","cruise","catch_kg_observer","lon_mean","lat_mean")] <- NULL
-    commercial[,c("Area","efid","Quarter","Day","Month","Year","HLID","metiers_g1","metiers_g2","Data","timeyear","timeyear2")] <- lapply(commercial[,c("Area","efid","Quarter","Day","Month","Year","HLID","metiers_g1","metiers_g2","Data","timeyear","timeyear2")],factor)
-    # OBS.: NOte that we can have problems when a scenario includes only one level either in VE_LENcat or metiers; thats why I don not drop those levels in the above line
-    
-    
-    # 6.3.2) Fishery independent data
+    # 6.2.2) Fishery independent data
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ## Subset survey data first by quarters, and then sample a fraction of each data, and then bind them together again
+    surQ1 <- subset(sur, Quarter =="1")
+    surQ4 <- subset(sur, Quarter =="4")
     
-    ## Subset data for first and fourth quarter, sample a fraction of each data, and then bind them together again
-    surveyQ1 <- subset(survey, Quarter =="1")
-    surveyQ4 <- subset(survey, Quarter =="4")
+    surQ1 <- as.data.frame(surQ1 %>% sample_frac(as.numeric(SCENARIO_SURQ1)))
+    surQ4 <- as.data.frame(surQ4 %>% sample_frac(as.numeric(SCENARIO_SURQ4)))
     
-    surveyQ1 <- as.data.frame(surveyQ1 %>% sample_frac(as.numeric(SCENARIO_SURQ1)))
-    surveyQ4 <- as.data.frame(surveyQ4 %>% sample_frac(as.numeric(SCENARIO_SURQ4)))
+    survey  <- rbind(surQ1,surQ4)
     
-    survey2  <- rbind(surveyQ1,surveyQ4)
-    
-    
-    ## Subset the most relevant columns from the survey data / reorder columns
-    colsel_sur <- c("Quarter","Year","Month","Day","Area","HaulDur","Depth",
-                    "Data","haul.id","lon","lat","timeyear","timeyear2","Ntot",paste("age",0:6,sep="_")) #column selection for survey data
-    
-    survey2 <- subset(survey2, select=colsel_sur)
-    
-    survey2[,c("Month","Year","Quarter","Area","Data","timeyear","timeyear2")] <- lapply(survey2[,c("Month","Year","Quarter","Area","Data","timeyear","timeyear2")], factor)
+    #FIXME: Optimize above lines with something like the lines below
+    #test <- split(sur, factor(sur$Quarter))
+    #test2 <- lapply(teste, sample_frac, as.numeric(c(SCENARIO_SURQ1,SCENARIO_SURQ4)))
     
     
     
-    
-    # 6.4) Bind survey and commercial datasets into a single dataset
+    # 6.3) Bind survey and commercial datasets into a single dataset
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    age_com   <- transform(commercial, HaulDur=haulduration_hours, numYear = as.numeric( as.character(Year)))
-    age_sur   <- transform(survey2, latStart=lat, lonStart=lon, latEnd=lat, lonEnd=lon,
+    df_com   <- transform(commercial, HaulDur=haulduration_hours, numYear = as.numeric( as.character(Year)))
+    df_sur   <- transform(survey, latStart=lat, lonStart=lon, latEnd=lat, lonEnd=lon,
                            HLID=haul.id, numYear = as.numeric(as.character(Year)))
     
-    if (DATA == "both"){
-      datatot <- mybind(age_com, age_sur)
-    } else if (DATA == "survey") {
-      datatot <- age_sur
-    } else if (DATA == "commercial")
-      datatot <- age_com
     
+    if (DATA == "both"){
+      datatot <- mybind(df_com, df_sur)
+    } else if (DATA == "survey") {
+      datatot <- df_sur
+    } else if (DATA == "commercial")
+      datatot <- df_com
+    
+    
+    #### RETAKE SCRIPT FROM HERE
     
     
     ## Create equally time spaced intervals - VERY important for the AR1 process
-    timeLevels <- as.vector(t(outer(min(datatot$numYear):max(datatot$numYear), 1:4, paste))) # Decide: quarterly or monthly basis
+    timeLevels <- as.vector(t(outer(min(datatot$numYear):max(datatot$numYear), 1:4, paste))) # Decide: quarterly or monthly basis; if monthly, change 1:4 to 1:12
     datatot$YearQuarter <- factor(paste(datatot$Year, datatot$Quarter), levels=timeLevels)
     
     
