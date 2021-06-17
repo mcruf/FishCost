@@ -92,7 +92,8 @@ mLoad(raster,rgeos,maptools,maps,data.table,dplyr,TMB,sp,DATRAS,gridConstruct,rg
 #     - (Com=1, SurQ1=1, SurQ4=0)
 #     - (Com=1, SurQ1=0, SurQ4=1)
 #     *Note: Any of the above options (3) could be chosen as baseline instead of the case where Com=1, SurQ1=1, SurQ4=1
-
+#     *Note2: The above options (3) have to be run individually and outside the simulation loop (section 6 in the script below), as there is 
+#             no reason to simulate n-times cases where 100% of the data are selected!
 
 
 # 3.1) Generate all possible data selection combination (i.e., scenrio)
