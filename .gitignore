@@ -1,8 +1,9 @@
-# Files to ignore
+# Any file or directory that ends with ~
+*~
+# Any file or directory that ends with following extensions:
 *.o
 *.so
+*.gz
 *.dll
+# Any file or directory with the following names:
 .Rhistory
-
-
-
