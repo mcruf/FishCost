@@ -44,7 +44,7 @@
 # 1) Default inputs
 #~~~~~~~~~~~~~~~~~~~~
 
-nsimu <- 5 #No. of simulations; in original paper, nsimu=500
+nsimu <- 5 #No. of simulations;  nsimu=500 in original paper
 
 
 # For scripting
@@ -52,7 +52,7 @@ nsimu <- 5 #No. of simulations; in original paper, nsimu=500
 # Especially useful when running script on hpc through Makefile
 YEAR <- c("2015","2016")[1] #Choose year from data for which abundance index should be estimated; default is 2015
 SPECIES <- c("cod","plaice","herring") [1] #Choose species of interest; default is cod
-DATA  <- c("both", "commercial", "survey") [1] #Choose input data for which scenarios will be run; default is both (commercial + survey)
+DATA  <- c("both", "commercial", "survey") [2] #Choose input data for which scenarios will be run; default is both (commercial + survey)
 PS <- c("No","One","Two")[1] #Define how the sampling nature should be accounted for; default is that no preferential sampling is accounted for in the commercial
 TIME <- c("YearQuarter","YearMonth")[1] #Define the temporal resolution for the model; default is set on a quarterly basis as in paper
 
@@ -174,7 +174,7 @@ stopifnot(levels(com$Year)==levels(sur$Year)) #Check that both datasets were sub
 # It doesn't matter wheter the grid is constructed upon the commercial or survey data, 
 # as long as it is consistent across data types (commercial, survey or both)
 
-grid <- GridConstruct(surFULL[,c("lon","lat")],km=10,scale=1.2) #Modified function from original gridConstruct. See "utilities.R" to see changes; Also, km=5 in original paper.
+grid <- GridConstruct(surFULL[,c("lon","lat")],km=5,scale=1.2) #Modified function from original gridConstruct. See "utilities.R" to see changes
 gr <- GridFilter(grid,df,icesSquare = T,connected=T) # filter out unnecessary spatial extensions; #Modified function from original gridConstruct. See "utilities.R" to see changes
 # plot(gr)
 
@@ -548,17 +548,18 @@ for(s in 1:nrow(scenarios)){
       dfsimu <- cbind(gr,pl)
       
       
-      SCENARIO <- gsub(",", ".", gsub("\\.", "", scenarios[s,5])) #s is the index for the scenario stated in the beginning of the script
-      
-      
-      
+      SCENARIO_FULL <- gsub(",", ".", gsub("\\.", "", scenarios[s,5])) #s is the index for the scenario stated in the beginning of the script
+      SCENARIO <- gsub(",",".", gsub("\\.","",paste(scenarios[s,1],scenarios[s,2],scenarios[s,3],sep="_")))
+
       #rm(list=setdiff(ls(), "dfsimu"))
       
       if(.Platform$OS.type == "windows") setwd("~/FishCost/Results/SimuAbundance")
       
-      setwd(paste0(getwd(),"/",DATA,sep=""))
+      wd <- getwd()
+      dir.create(paste0(wd,"/",DATA,"/",paste(DATA,SCENARIO,sep="_")),recursive=T)
       
-      OUTFILE  <- paste0("results_", paste(i,"scenario",SCENARIO,sep="_"), ".rds")
+      setwd(paste0(wd,"/",DATA,"/",paste(DATA,SCENARIO,sep="_")))
+      OUTFILE  <- paste0("results_", paste(i,"scenario",SCENARIO_FULL,sep="_"), ".rds")
       saveRDS(dfsimu,file=OUTFILE)
       #rm(list=ls())
     }
