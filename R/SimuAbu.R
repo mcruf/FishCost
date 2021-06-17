@@ -174,7 +174,7 @@ stopifnot(levels(com$Year)==levels(sur$Year)) #Check that both datasets were sub
 # It doesn't matter wheter the grid is constructed upon the commercial or survey data, 
 # as long as it is consistent across data types (commercial, survey or both)
 
-grid <- GridConstruct(surFULL[,c("lon","lat")],km=5,scale=1.2) #Modified function from original gridConstruct. See "utilities.R" to see changes
+grid <- GridConstruct(surFULL[,c("lon","lat")],km=10,scale=1.2) #Modified function from original gridConstruct. See "utilities.R" to see changes; Also, km=5 in original paper.
 gr <- GridFilter(grid,df,icesSquare = T,connected=T) # filter out unnecessary spatial extensions; #Modified function from original gridConstruct. See "utilities.R" to see changes
 # plot(gr)
 
@@ -351,7 +351,8 @@ for(s in 1:nrow(scenarios)){
     
     ### 6.9.2) Complile LGNB model
     #Sys.setenv(PATH="%PATH%;C:/Rtools/gcc-4.6.3/bin;c:/Rtools/bin") #Run only when on windows
-    compile("~/FishCost/src/LGNB.cpp")
+    setwd("~/FishCost/src/")
+    compile("LGNB.cpp")
     dyn.load(dynlib("LGNB"))
     
     
@@ -501,19 +502,7 @@ for(s in 1:nrow(scenarios)){
     data$Data <- factor(data$Data, rev(levels(data$Data))) #Make sure that survey data comes always first!
     datatot$Data <- factor(datatot$Data, rev(levels(datatot$Data))) #Make sure that survey data comes always first!
     
-    
-    if (MODEL_FORMULA == "m2") {
-      if(DATA == "commercial"){
-        m2 <- buildModelMatrices(~  -1 + YearQuarter + offset(log(HaulDur)), ~metiers-1 + VE_LENcat-1, data=datatot)
-      } else if(DATA == "survey"){
-        m2 <- buildModelMatrices(~ -1 + YearQuarter + offset(log(HaulDur)), data=datatot)
-      } else {
-        m2 <- buildModelMatrices(~ -1 + Data + YearQuarter + offset(log(HaulDur)), ~metiers-1 + VE_LENcat-1, data=datatot)
-      }
-      env2 <- tryCatch(fit_model(data, m2, with_static_field = F), error=function(e) {})
-    }
-    
-
+ 
       if(DATA == "commercial"){
         
                if(TIME == "YearMonth"){
@@ -552,10 +541,11 @@ for(s in 1:nrow(scenarios)){
       pl <- as.list(env1$sdr,"Estimate"); pl <- as.data.frame(pl$eta_density) #Estimates
       colnames(pl) <- paste(levels(env1$data$time),"est",sep=".")
       
-      pl.sd <- as.list(env1$sdr,"Std. Error"); pl.sd <- as.data.frame(pl.sd$eta_density) #Std. Error
-      colnames(pl.sd) <- paste(levels(env1$data$time),"se",sep=".")
+      #pl.sd <- as.list(env1$sdr,"Std. Error"); pl.sd <- as.data.frame(pl.sd$eta_density) #Std. Error
+      #colnames(pl.sd) <- paste(levels(env1$data$time),"se",sep=".")
       
-      dfsimu <- cbind(gr,pl,pl.sd)
+      #dfsimu <- cbind(gr,pl,pl.sd)
+      dfsimu <- cbind(gr,pl)
       
       
       SCENARIO <- gsub(",", ".", gsub("\\.", "", scenarios[s,5])) #s is the index for the scenario stated in the beginning of the script
@@ -568,7 +558,7 @@ for(s in 1:nrow(scenarios)){
       
       setwd(paste0(getwd(),"/",DATA,sep=""))
       
-      OUTFILE  <- paste0("results_", paste(i,"scenario",SCENARIO,sep="_"), ".RData")
+      OUTFILE  <- paste0("results_", paste(i,"scenario",SCENARIO,sep="_"), ".rds")
       saveRDS(dfsimu,file=OUTFILE)
       #rm(list=ls())
     }
