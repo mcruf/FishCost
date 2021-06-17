@@ -44,7 +44,7 @@
 # 1) Default inputs
 #~~~~~~~~~~~~~~~~~~~~
 
-nsimu <- 10 #No. of simulations; in original paper, nsimu=500
+nsimu <- 5 #No. of simulations; in original paper, nsimu=500
 
 
 # For scripting
