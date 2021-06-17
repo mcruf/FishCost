@@ -350,7 +350,7 @@ for(s in 1:nrow(scenarios)){
     
     
     ### 6.9.2) Complile LGNB model
-    #Sys.setenv(PATH="%PATH%;C:/Rtools/gcc-4.6.3/bin;c:/Rtools/bin") #Run only when on windows
+    Sys.setenv(PATH="%PATH%;C:/Rtools/gcc-4.6.3/bin;c:/Rtools/bin") #Run only when on windows
     setwd("~/FishCost/src/")
     compile("LGNB.cpp")
     dyn.load(dynlib("LGNB"))
