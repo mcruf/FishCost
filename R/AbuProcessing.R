@@ -14,105 +14,147 @@
 
 
 # This script is to be performed after the abundance simulations (Script No. 1 - SimuAbu)
-# The LGNB model provides the abundance estimates for each grid point and input time-period.
-# As the model was set on a quarterly level, this means that we will have an abundance estimate
-# per quarter and grid point. We need to convert this into a "total" abundance with its standard deviation.
+# The LGNB model provides abundance estimates for each grid point and input time-period.
+# As the default model configuration was set on a quarterly level, this means that we will 
+# have an abundance estimate per quarter and grid point.
+# We need to convert this into a "total" abundance with its standard deviation.
 # This is what the present script does.
 
+
+#><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
 
 
 rm(list=ls())
 
 
 
+#~~~~~~~~~~~~~~~~~~
+# 1) Load results
+#~~~~~~~~~~~~~~~~~~
 
 
-setwd("~/FishCost/Results/") # Select appropriate directory
-
-
-temp <- list.files(pattern=".RData")
-
-
-DATAID <- c("commercial","survey","both")[3]
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 1) Load data and set into list
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pat   <- gregexpr(pattern ='_scenario',temp)
-d <- temp[which(pat==10)] #1-9
-dd <- temp[which(pat==11)] #10-99
-ddd <- temp[which(pat==12)] #100-500
-
-
-# Load datafiles with numbers 1-9
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-for(i in 1:length(d)){
-  nsimu <- substr(d[i],9,9)
-  
-  if(DATAID=="commercial"){
-  filename <- paste("com",nsimu, sep="_")
-  } else if(DATAID=="survey"){
-  filename <- paste("sur",nsimu, sep="_")
-  } else if(DATAID=="both"){
-  filename <- paste("both",nsimu, sep="_")
-  }
-  
-  assign(paste(filename), readRDS(d[i]))
-}
-
-
-# Load datafiles with numbers 10-99
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-for(i in 1:length(dd)){
-  nsimu <- substr(dd[i],9,10)
-  if(DATAID=="commercial"){
-  filename <- paste("com",nsimu, sep="_")
-  } else if(DATAID=="survey"){
-  filename <- paste("sur",nsimu, sep="_")
-  } else if(DATAID=="both"){
-  filename <- paste("both",nsimu, sep="_")
-  }
-  
-  assign(paste(filename), readRDS(dd[i]))
-}
-
-# Load datafiles with numbers 100-500
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-for(i in 1:length(ddd)){
-  nsimu <- substr(ddd[i],9,11)
-  if(DATAID=="commercial"){
-  filename <- paste("com",nsimu, sep="_")
-  } else if(DATAID=="survey"){
-  filename <- paste("sur",nsimu, sep="_")
-  } else if(DATAID=="both"){
-  filename <- paste("both",nsimu, sep="_")
-  }
-  
-  assign(paste(filename), readRDS(ddd[i]))
-}
-
-
-# Set everyhting into a list
+# 1.1) Define default inputs
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SPECIES <- c("cod","plaice","herring") [1] #Choose species from which results should be loaded; default is cod
+YEAR <- c("2015","2016")[1] #Choose year from wich simulation results should be loaded; default is 2015
+DATA  <- c("both", "commercial", "survey") [2] #Choose data from which results should be loaded; default is both
+
+
+
+# 1.2) Define working directory
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Based on default inputs
+setwd(paste("~","FishCost", "Results", "SimuAbundance", SPECIES , YEAR, DATA, sep="/"))
+wd <- getwd() #To be used later in the loop
+
+
+
+# 1.3) List directories within selected working directory
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+tmpdir <- list.dirs(path = ".", full.names = TRUE, recursive = TRUE)
+tmpdir2 <- tmpdir[2:length(tmpdir)] #Keep out result from fixed scenario (those that were not simulated)
+tmpdir2 <- sub('..', '', tmpdir2) #Remove first two characters of directories
+
+
+# 1.4) List result files
+#~~~~~~~~~~~~~~~~~~~~~~~~
+tmpfile <- list()
+pat <- list()
+
+
+for(i in seq_along(tmpdir2)){ 
+  
+  setwd(paste(wd,tmpdir2[i], sep="/"))
+  
+  tmpfile[[i]] <- list.files(pattern=".RData")
+  pat[[i]]   <- gregexpr(pattern ='_scenario',tmpfile[[i]])
+  
+}
+
+
+
+# 1.5) Load scenario-specific results
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#We need to indicate wich group of simulation indices we want to load.
+#There are 3 groups of simulation: 1<i<9, 10<i<99, and i<100<500 (where i=simulation number)
+#For the toy example, only 5 simulations were run (i=1,...,5). 
+#However, in original paper i=500. The code lines below thus expands to cases with i>10 
+
+
+d <- list()
+dd <- list()
+ddd <- list()
+
+for(i in seq_along(tmpfile)){
+
+d[[i]] <- tmpfile[[i]][which(pat[[i]]==10)] #Get simulation indices from 1-9
+dd[[i]] <- tmpfile[[i]][which(pat[[i]]==11)] #...from 10-99
+ddd[[i]] <- tmpfile[[i]][which(pat[[i]]==12)] #...from 100-500
+  
+}
+
+
+
+## Load results from simulation indices 1-9
+for(j in seq_along(d)){
+  for(s in seq_along(d[[j]])){
+    setwd(paste(wd,tmpdir2[j], sep="/"))
+    nsimu <- substr(d[[j]][s],9,9)
+    
+    filename <- paste(tmpdir2[[j]],"_","S",nsimu,sep="")
+    assign(paste(filename), readRDS(d[[j]][s]))
+    
+  }
+}
+
+
+
+## Load results from simulation indices 10-99
+for(j in seq_along(dd)){
+  for(s in seq_along(dd[[j]])){
+    setwd(paste(wd,tmpdir2[j], sep="/"))
+    nsimu <- substr(dd[[j]][s],9,10)
+    
+    filename <- paste(tmpdir2[[j]],"_","S",nsimu,sep="")
+    assign(paste(filename), readRDS(dd[[j]][s]))
+    
+  }
+}
+
+
+## Load datafiles with numbers 100-500
+for(j in seq_along(ddd)){
+  for(s in seq_along(ddd[[j]])){
+    setwd(paste(wd,tmpdir2[j], sep="/"))
+    nsimu <- substr(ddd[[j]][s],9,11)
+    
+    filename <- paste(tmpdir2[[j]],"_","S",nsimu,sep="")
+    assign(paste(filename), readRDS(ddd[[j]][s]))
+    
+  }
+}
+
+
+# 1.6) Set scenario-specific results into a list
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 reslist  <- list()
+p <- list()
 
-
-if(DATAID=="commercial"){
-reslist <- mget(ls(pattern =  "*com_"))
-} else if (DATAID=="survey"){
-reslist <- mget(ls(pattern =  "*sur_"))
-} else if (DATAID=="both"){
-reslist <- mget(ls(pattern =  "*both_"))
+for(i in seq_along(tmpdir2)){
+  
+  p[[i]] <- substr(tmpdir2[[i]],12,18)
+  
+   reslist[[i]] <- mget(ls(pattern =  p[[i]]))
 }
 
-if(DATAID=="commercial"){
-rm(list=ls(pattern=c("com_","d","dd","ddd")))
-} else if(DATAID=="survey"){
-rm(list=ls(pattern=c("sur_","d","dd","ddd")))
-} else if(DATAID=="both"){
-rm(list=ls(pattern=c("both_","d","dd","ddd")))
-}
+
+
+# 1.7) Remove unused objects from environment
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#To make space
+rm(list=setdiff(ls(), "reslist"))
+
+
 
 
 
