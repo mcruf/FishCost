@@ -557,9 +557,9 @@ for(s in 1:nrow(scenarios)){
       if(.Platform$OS.type == "windows") setwd("~/FishCost/Results/SimuAbundance")
       
       wd <- getwd()
-      dir.create(paste0(wd,"/",DATA,"/",paste(DATA,SCENARIO,sep="_")),recursive=T)
+      dir.create(paste0(wd,"/",SPECIES,"/",YEAR,"/",DATA,"/",paste(DATA,SCENARIO,sep="_")),recursive=T)
       
-      setwd(paste0(wd,"/",DATA,"/",paste(DATA,SCENARIO,sep="_")))
+      setwd(paste0(wd,"/",SPECIES,"/",YEAR,"/",DATA,"/",paste(DATA,SCENARIO,sep="_")))
       OUTFILE  <- paste0("results_", paste(i,"scenario",SCENARIO_FULL,sep="_"), ".rds")
       saveRDS(dfsimu,file=OUTFILE)
       #rm(list=ls())
