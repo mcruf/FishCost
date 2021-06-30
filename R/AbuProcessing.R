@@ -299,73 +299,99 @@ isTRUE(dim(dat)[1]==(length(tmpdir2)*nsimu))
 
 
 
+# 5.1) Get file names
+#~~~~~~~~~~~~~~~~~~~~~~
+extrafiles <- list.files(pattern="*.RData") #Replace with rds if necessary
+
+
+# 5.2) Load results
+#~~~~~~~~~~~~~~~~~~~~
+resextra <- list()
+for(i in seq_along(extrafiles)){
+  filename <- sub('\\.RData$', '', extrafiles[i]) #Replace with rds if necessary
+  resextra[[i]]<-assign(paste(filename), readRDS(extrafiles[i]))
+}
+
+
+
+# 5.3) Convert to natural scale (exp values)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+resextraexp <- vector('list', length(resextra))
+for(i in seq_along(resextra)){
+    resextraexp[[i]] = exp(resextra[[i]][3:6]) #Select only columns with abundance estimates
+}
+
+
+# 5.4) Get mean abundance 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~
+for(i in seq_along(resextraexp)){
+  resextraexp[[i]]$meanAbu <- rowMeans(resextraexp[[i]][1:4])
+}
+
+
+
+# 5.5) Get total abundance for the whole year
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dfextra <- list()
+for(i in seq_along(resextraexp)){
+    dfextra[[i]]<- as.data.frame(colSums(resextraexp[[i]][5],na.rm=T))#take column with "mean Abundance"
+    colnames(dfextra[[i]]) <- "TotAbu"
+    rownames(dfextra[[i]])<- NULL
+}
+
+
+
+# 5.6) Include additional information
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+for(i in seq_along(dfextra)){
+  filename[[i]] <- sub('\\.RData$', '', extrafiles[i]) 
+  
+  if(DATA == "both"){
+    dfextra[[i]]$Data <- substr(filename[i],1,4) 
+    dfextra[[i]]$Scenario <- substr(filename[[i]],6,25) 
+    dfextra[[i]]$nsimu <- NA
+  
+  } else if(DATA == "commercial"){
+    dfextra[[i]]$Data <- substr(filename[i],1,10) 
+    dfextra[[i]]$Scenario <- substr(filename[[i]],12,25) 
+    dfextra[[i]]$nsimu <- NA
+    
+  } else if(DATA == "survey"){
+    dfextra[[i]]$Data <- substr(filename[i],1,6) 
+    dfextra[[i]]$Scenario <- substr(filename[[i]],7,25) 
+    dfextra[[i]]$nsimu <- NA
+  }
+ 
+}
+
+
+
+
+# 5.7) Bind lists into a dingle df
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+datext <- do.call("rbind", dfextra)
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~
+# 6) Bind the two dfs
+#~~~~~~~~~~~~~~~~~~~~~~
+dfall <- rbind(dat, datext) 
+
+
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 5) Save the final results
+# 7) Finally, save the results...
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#setwd("C:/Users/mruf/OneDrive - Danmarks Tekniske Universitet/PhD/Manuscript_02/Results/Finalized/")
-setwd("C:/Users/mruf/OneDrive - Danmarks Tekniske Universitet/PhD/Manuscript_02/Results/Cod/2015/Finalized/")
+if(.Platform$OS.type == "windows") setwd("~/FishCost/Results/SimuAbundance")
+
+wd <- getwd()
+dir.create(paste0(wd,"/",SPECIES,"/",YEAR,"/","Processed"),recursive=T)
+
+setwd(paste0(wd,"/",SPECIES,"/",YEAR,"/","Processed"))
+OUTFILE  <- paste0("Processed_SimuResults_", DATA, ".rds")
+saveRDS(dfall,file=OUTFILE)
 
 
-#saveRDS(df, paste(datid, scenario, sep="_",".rds"))
-saveRDS(df, paste(scenario,".rds",sep=""))
-
-
-
-#################################################################################
-
-
-
-# #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# # Extra: Reference models (do not have 500 runs)
-# #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# setwd("C:/Users/mruf/OneDrive - Danmarks Tekniske Universitet/PhD/Manuscript_02/Results/Reference_models/") # Select appropriate directory
-# 
-# tmp  <- readRDS("BOTH_1_0_1.RData")
-# 
-# 
-# 
-# # Get mean abundance and std. error for each grid point
-# #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# # First convert to natural scale (exp values)
-# tmp2 <- as.data.frame(apply(tmp[3:10],2,exp))
-# 
-# tmp2$meanAbu <- rowMeans(tmp2[,1:4])
-# tmp2$meanSE <- rowMeans(tmp2[,5:8])
-# 
-# 
-# # Get total mean abundance and std. error for the whole year
-# #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# df = data.frame(totAbund = rep(0, 1), meanSEmodel = rep(0,1), medianSEmodel = rep(0,1))
-# 
-# df$totAbund <- sum(tmp2$meanAbu,na.rm=T)
-# df$meanSEmodel <- mean(tmp2$meanSE, na.rm=T)
-# df$medianSEmodel <- median(tmp2$meanSE,na.rm=T)
-# 
-# 
-# 
-# # Include additional information on the dataframe
-# #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# df$scenario <- paste("1_0_1")
-# 
-# 
-# # Get overall SD and SE from the abundances
-# #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# se <- function(x) sd(x)/sqrt(length(x)) #function to calculate standard error
-# 
-# 
-# df$sd <- sd(df$totAbund)
-# df$se <- se(df$totAbund)
-# df$cv <- sd(df$totAbund)/mean(df$totAbund)
-# df$variance <- var(df$totAbund) 
-# 
-# df$dataID <- "both"
-# 
-# 
-# 
-# # Save the final results
-# #~~~~~~~~~~~~~~~~~~~~~~~~~
-# setwd("C:/Users/mruf/OneDrive - Danmarks Tekniske Universitet/PhD/Manuscript_02/Results/Finalized/")
-# 
-# saveRDS(df, "1_0_1.rds")
