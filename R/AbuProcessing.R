@@ -32,12 +32,16 @@ rm(list=ls())
 # 1) Load results
 #~~~~~~~~~~~~~~~~~~
 
+#Code lines below are not the pretties, but it works :)
+#FIXME: I'll be making the below lines more efficient in due time!
+
+
 
 # 1.1) Define default inputs
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SPECIES <- c("cod","plaice","herring") [1] #Choose species from which results should be loaded; default is cod
 YEAR <- c("2015","2016")[1] #Choose year from wich simulation results should be loaded; default is 2015
-DATA  <- c("both", "commercial", "survey") [2] #Choose data from which results should be loaded; default is both
+DATA  <- c("both", "commercial", "survey") [1] #Choose data from which results should be loaded; default is both
 
 
 
@@ -75,10 +79,10 @@ for(i in seq_along(tmpdir2)){
 
 # 1.5) Load scenario-specific results
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#We need to indicate wich group of simulation indices we want to load.
+#We need to indicate which group of simulation indices we want to load.
 #There are 3 groups of simulation: 1<i<9, 10<i<99, and i<100<500 (where i=simulation number)
 #For the toy example, only 5 simulations were run (i=1,...,5). 
-#However, in original paper i=500. The code lines below thus expands to cases with i>10 
+#However, in original paper i=1,...,500. The code lines below thus expands to cases where 1<i<500 
 
 
 d <- list()
@@ -142,119 +146,142 @@ p <- list()
 
 for(i in seq_along(tmpdir2)){
   
-  p[[i]] <- substr(tmpdir2[[i]],12,18)
-  
-   reslist[[i]] <- mget(ls(pattern =  p[[i]]))
+  if(DATA == "both"){
+  p[[i]] <- substr(tmpdir2[[i]],6,20)
+
+  } else if(DATA=="commercial"){
+  p[[i]] <- substr(tmpdir2[[i]],12,20)
+
+  } else if(DATA == "survey"){
+  p[[i]] <- substr(tmpdir2[[i]],8,20)
+  }
+
+ reslist[[i]] <- mget(ls(pattern =  p[[i]]))
+ #reslist[[i]] <- mget(ls(pattern =  grep("^",p[[i]],"",value=T)))
+ # reslist[[i]] <- mget(grep("$", 
+ #                           ls(pattern = p[[i]]), value = TRUE))
+
 }
+
+
+View(reslist)
+names(reslist) <- tmpdir2
+
+
+######################################     FIXME     
+## Fix bug
+#There is a bug when setting sampling strategies ending with "0" to the list (e.g., 025_025_0). 
+#For those cases, the mget function above inlcudes all sampling strategies where the last scenario
+#includes all level of haul selections - for the example above: 025_025_0, 025_025_025, 025_025_05, 025_025_075, 025_025_1
+#We have to remove these extra simulations from our list.
+#Our list within the list should have the same length of nsimu (for the toy example nsimu=5)
+
+
+
+
 
 
 
 # 1.7) Remove unused objects from environment
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #To make space
-rm(list=setdiff(ls(), "reslist"))
+rm(list=setdiff(ls(), c("reslist","tmpdir2","DATA")))
 
 
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 2) Get mean abundance and std. error for each grid point
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 2) Get mean abundance for each grid point
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# First we need to convert the abundances to natural scale.
-# Not sure about the SE, though. I will apply for it as well.
-
-# for(i in seq_along(reslist)){
-# reslist[[i]]$meanAbu <- rowMeans(reslist[[i]][3:6])
-# reslist[[i]]$meanSE <- rowMeans(reslist[[i]][7:10])
-# }
 
 # 2.1) Convert to natural scale (exp values)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-reslistexp <- list()
+# First we need to convert the abundances to natural scale.
+# LGNB output is given on a log-scale!
+
+reslistexp <- vector('list', length(reslist))
 for(i in seq_along(reslist)){
-  reslistexp[[i]] = apply(reslist[[i]][3:10],2,exp)
+  for(j in seq_along(reslist[[i]])){
+  reslistexp[[i]][[j]] = exp(reslist[[i]][[j]][3:6]) #Select only columns with abundance estimates
+  }
 }
-reslistexp <- lapply(reslistexp ,as.data.frame) #convert to a df, otherwise we will have trouble in the next step
 
 
 
-# 2.2) Go for the mean abundance and SE
+# 2.2) Get mean abundance 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~
+for(i in seq_along(reslistexp)){
+  for(j in seq_along(reslistexp[[i]])){
+  reslistexp[[i]][[j]]$meanAbu <- rowMeans(reslistexp[[i]][[j]][1:4])
+  }
+}
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 3) Get total abundance for the whole year
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+nsimu <- 5 #Define here the total amount of simulation; toy example nsim=5, but in paper nsimu=500
+
+
+df <- vector('list', length(reslistexp))
+for(i in seq_along(reslistexp)){
+  for(j in seq_along(reslistexp[[i]])){
+    df[[i]][[j]]<- colSums(reslistexp[[i]][[j]][5],na.rm=T)#take column with "mean Abundance"
+  }
+}
+
+
+df2 <- list()
+for(i in seq_along(reslistexp)){
+  df2[[i]] <- as.data.frame(df[[i]]) 
+  colnames(df2[[i]]) <- "TotAbu"
+  
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 4) Include additional information
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-for(i in seq_along(reslistexp)){
-  reslistexp[[i]]$meanAbu <- rowMeans(reslistexp[[i]][1:4])
-  reslistexp[[i]]$meanSE <- rowMeans(reslistexp[[i]][5:8])
+for(i in seq_along(df2)){
+  
+  if(DATA == "both"){
+    df2[[i]]$Data <- substr(tmpdir2[[i]],1,4) 
+    df2[[i]]$Scenario <- substr(tmpdir2[[i]],6,25) 
+    df2[[i]]$nsimu <- seq(1:nsimu)
+    
+  } else if(DATA == "commercial"){
+  df2[[i]]$Data <- substr(tmpdir2[[i]],1,10) 
+  df2[[i]]$Scenario <- substr(tmpdir2[[i]],12,25) 
+  df2[[i]]$nsimu <- seq(1:nsimu)
+
+  } else if(DATA == "survey"){
+    df2[[i]]$Data <- substr(tmpdir2[[i]],1,6) 
+    df2[[i]]$Scenario <- substr(tmpdir2[[i]],7,25)  
+    df2[[i]]$nsimu <- seq(1:nsimu)
+  }
 }
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 3) Get total mean abundance and std. error for the whole year
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-df = data.frame(totAbund = rep(0, 500), meanSEmodel = rep(0,500), medianSEmodel = rep(0,500))
 
-for(i in seq_along(reslistexp)){
-  totAbund <- colSums(reslistexp[[i]][9],na.rm=T)
-  meanSEmodel <- colMeans(reslistexp[[i]][10], na.rm=T)
-  medianSEmodel <- median(reslistexp[[i]]$meanSE,na.rm=T)
-  df[i,] <- c(totAbund, meanSEmodel, medianSEmodel)
-}
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 4) Include additional information on the dataframe
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-wd  <- getwd() 
-
-
-if(DATAID=="commercial"){
-#pat2 <- substr(wd,82,105) #commercial 2016
-pat2 <- substr(wd,91,120) #commercial 2015
-} else if(DATAID=="survey"){
-#pat2 <- substr(wd,82,105) #survey 2016
-pat2 <- substr(wd,91,120) #survey 2015
-} else if(DATAID=="both"){
-#pat2B <- substr(wd,87,105) #both 2016
-pat2B <- substr(wd,96,120) #both 2015
-}
-
-
-if(DATAID=="commercial"){
-scenario <- substr(pat2,16,25) # commercial
-} else if(DATAID=="survey"){
-scenario <- substr(pat2,12,25) #survey
-} else if(DATAID=="both"){
-scenario <- substr(pat2B,6,25) # both
-}
-
-
-df$scenario <- paste(scenario)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 5) Include not simulated results
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Results related to those scenarios where no simulation were needed.
+#Includes the following scenarios:
+#     - (Com=0, SurQ1=1, SurQ4=1)
+#     - (Com=0, SurQ1=0, SurQ4=1)
+#     - (Com=0, SurQ1=1, SurQ4=0)
+#     - (Com=1, SurQ1=0, SurQ4=0)
+#     - (Com=1, SurQ1=1, SurQ4=0)
+#     - (Com=1, SurQ1=0, SurQ4=1)
+#     - (Com=1, SurQ1=1, SurQ4=1)
 
 
 
-# Get overall SD, SE, CV and VARIANCE from the abundances
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-se <- function(x) sd(x)/sqrt(length(x)) #function to calculate standard error
-
-
-df$sd <- sd(df$totAbund)
-df$se <- se(df$totAbund)
-df$cv <- sd(df$totAbund)/mean(df$totAbund)
-df$variance <- var(df$totAbund) 
-
-
-if(DATAID=="commercial"){
-datid <- substr(pat2,1,3)
-} else if(DATAID=="survey"){
-datid <- substr(pat2,1,3)
-} else if (DATAID=="both"){
-datid <- substr(pat2B,1,4)
-}
-
-
-df$dataID <- datid
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
