@@ -178,7 +178,7 @@ names(reslist) <- tmpdir2
 # 1.7) Remove unused objects from environment
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #To make space
-rm(list=setdiff(ls(), c("reslist","tmpdir2","DATA")))
+rm(list=setdiff(ls(), c("reslist","tmpdir2","DATA","SPECIES","YEAR")))
 
 
 
@@ -280,7 +280,7 @@ lapply(df3, dim) #Check
 # 4.3) Bind lists into a dingle df
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 dat <- do.call("rbind", df3)
-isTRUE(dim(dat)[1]==(length(tmpdir2)*nsimu))
+stopifnot(isTRUE(dim(dat)[1]==(length(tmpdir2)*nsimu)))
 
 
 
@@ -301,6 +301,7 @@ isTRUE(dim(dat)[1]==(length(tmpdir2)*nsimu))
 
 # 5.1) Get file names
 #~~~~~~~~~~~~~~~~~~~~~~
+setwd("../")
 extrafiles <- list.files(pattern="*.RData") #Replace with rds if necessary
 
 
@@ -388,7 +389,7 @@ dfall <- rbind(dat, datext)
 if(.Platform$OS.type == "windows") setwd("~/FishCost/Results/SimuAbundance")
 
 wd <- getwd()
-dir.create(paste0(wd,"/",SPECIES,"/",YEAR,"/","Processed"),recursive=T)
+dir.create(paste0(wd,"/",SPECIES,"/",YEAR,"/","Processed"),recursive=T, showWarnings = FALSE)
 
 setwd(paste0(wd,"/",SPECIES,"/",YEAR,"/","Processed"))
 OUTFILE  <- paste0("Processed_SimuResults_", DATA, ".rds")
