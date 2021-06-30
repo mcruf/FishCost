@@ -157,26 +157,19 @@ for(i in seq_along(tmpdir2)){
   }
 
  reslist[[i]] <- mget(ls(pattern =  p[[i]]))
- #reslist[[i]] <- mget(ls(pattern =  grep("^",p[[i]],"",value=T)))
- # reslist[[i]] <- mget(grep("$", 
- #                           ls(pattern = p[[i]]), value = TRUE))
+ #reslist[[i]] <- mget(ls(pattern =  grep("^",p[[i]],"$",value=T))) #FIXME 
+
 
 }
+### FIXME   
+## Fix bug above - for now the bug is fixed manually later below in the script".
+# Problem happens when sampling strategies ends with "0" (e.g., 025_025_0, 025_025_025, ..._05,..._075). 
+# For those cases, the mget function above inlcudes all sampling strategies in the list where the last scenario
+# includes any level of haul selections (except when 100%) - for the example above: 025_025_0, 025_025_025, 025_025_05, 025_025_075, 025_025_1
+# see: lapply(reslist, print(length)) #in some cases length>nsimu. length==nsimu
 
 
-View(reslist)
 names(reslist) <- tmpdir2
-
-
-######################################     FIXME     
-## Fix bug
-#There is a bug when setting sampling strategies ending with "0" to the list (e.g., 025_025_0). 
-#For those cases, the mget function above inlcudes all sampling strategies where the last scenario
-#includes all level of haul selections - for the example above: 025_025_0, 025_025_025, 025_025_05, 025_025_075, 025_025_1
-#We have to remove these extra simulations from our list.
-#Our list within the list should have the same length of nsimu (for the toy example nsimu=5)
-
-
 
 
 
@@ -242,9 +235,15 @@ for(i in seq_along(reslistexp)){
 }
 
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 4) Some additional manipulation
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+# 4.1) Include additional information
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 4) Include additional information
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 for(i in seq_along(df2)){
   
   if(DATA == "both"){
@@ -253,9 +252,9 @@ for(i in seq_along(df2)){
     df2[[i]]$nsimu <- seq(1:nsimu)
     
   } else if(DATA == "commercial"){
-  df2[[i]]$Data <- substr(tmpdir2[[i]],1,10) 
-  df2[[i]]$Scenario <- substr(tmpdir2[[i]],12,25) 
-  df2[[i]]$nsimu <- seq(1:nsimu)
+    df2[[i]]$Data <- substr(tmpdir2[[i]],1,10) 
+    df2[[i]]$Scenario <- substr(tmpdir2[[i]],12,25) 
+    df2[[i]]$nsimu <- seq(1:nsimu)
 
   } else if(DATA == "survey"){
     df2[[i]]$Data <- substr(tmpdir2[[i]],1,6) 
@@ -264,6 +263,24 @@ for(i in seq_along(df2)){
   }
 }
 
+
+
+
+# 4.2) Fix bug reported in section 1.6
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+df3 <- list()
+for(i in seq_along(df2)){
+  df3[[i]] <- df2[[i]][1:nsimu,] #Keep only the first rows with length=nsimu in each data frame
+}
+
+lapply(df3, dim) #Check
+
+
+
+# 4.3) Bind lists into a dingle df
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+dat <- do.call("rbind", df3)
+isTRUE(dim(dat)[1]==(length(tmpdir2)*nsimu))
 
 
 
