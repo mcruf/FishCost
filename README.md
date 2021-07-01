@@ -29,16 +29,17 @@ The `FishCost` framework is built upon three consecutive R scripts:
 
 **Note: Scripts have to be run in the exact same order**
 
-### >SimuAbu.R 
+<><><><><><><><><><><><><><><><><><><><><><><><><><><>
+### - SimuAbu.R 
 This script simulates fish abundance given a pre-defined sampling strategy. Abundance estimations are done through the LGNB spatio-temporal species distribution model developed by Rufener et al. (2021 - paper *in press*).
 
 - Please refer to the [LGNB](https://github.com/mcruf/LGNB) GitHub repositroy for a full instruction on the LGNB model.
 
 
-### >AbuProcessing.R
+### - AbuProcessing.R
 Once abundance were simulated, it is time to process the simulation results. For each sampling strategy and simulation therein, total abundances are calculated from the LGNB model output. The script is built in such way that it processes automatically the results according to the input data that is chosen by the user (survey, commercial, or integrated data).
 
 
-### >DEA.R
+### - DEA.R
 This script conducts the Data Envelopment Analysis (DEA) based on data-specific sampling costs and the simulated abundances that were processed in the previous script.
 
