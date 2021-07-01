@@ -6,7 +6,7 @@
 #                                                                                        #
 ##########################################################################################
 
-# Last update: June, 2021
+# Last update: July, 2021
 
 
 # Code written and mantained by Marie-Christine Rufener
@@ -248,17 +248,17 @@ for(i in seq_along(df2)){
   
   if(DATA == "both"){
     df2[[i]]$Data <- substr(tmpdir2[[i]],1,4) 
-    df2[[i]]$Scenario <- substr(tmpdir2[[i]],6,25) 
+    df2[[i]]$SamplingStrategy <- substr(tmpdir2[[i]],6,25) 
     df2[[i]]$nsimu <- seq(1:nsimu)
     
   } else if(DATA == "commercial"){
     df2[[i]]$Data <- substr(tmpdir2[[i]],1,10) 
-    df2[[i]]$Scenario <- substr(tmpdir2[[i]],12,25) 
+    df2[[i]]$SamplingStrategy <- substr(tmpdir2[[i]],12,25) 
     df2[[i]]$nsimu <- seq(1:nsimu)
 
   } else if(DATA == "survey"){
     df2[[i]]$Data <- substr(tmpdir2[[i]],1,6) 
-    df2[[i]]$Scenario <- substr(tmpdir2[[i]],7,25)  
+    df2[[i]]$SamplingStrategy <- substr(tmpdir2[[i]],8,25)  
     df2[[i]]$nsimu <- seq(1:nsimu)
   }
 }
@@ -349,17 +349,17 @@ for(i in seq_along(dfextra)){
   
   if(DATA == "both"){
     dfextra[[i]]$Data <- substr(filename[i],1,4) 
-    dfextra[[i]]$Scenario <- substr(filename[[i]],6,25) 
+    dfextra[[i]]$SamplingStrategy <- substr(filename[[i]],6,25) 
     dfextra[[i]]$nsimu <- NA
   
   } else if(DATA == "commercial"){
     dfextra[[i]]$Data <- substr(filename[i],1,10) 
-    dfextra[[i]]$Scenario <- substr(filename[[i]],12,25) 
+    dfextra[[i]]$SamplingStrategy <- substr(filename[[i]],12,25) 
     dfextra[[i]]$nsimu <- NA
     
   } else if(DATA == "survey"){
     dfextra[[i]]$Data <- substr(filename[i],1,6) 
-    dfextra[[i]]$Scenario <- substr(filename[[i]],7,25) 
+    dfextra[[i]]$SamplingStrategy <- substr(filename[[i]],8,25) 
     dfextra[[i]]$nsimu <- NA
   }
  
