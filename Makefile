@@ -4,6 +4,9 @@ export OMP_NUM_THREADS=8
 export MAX_DURATION=05:00:00:00
 export MAX_MEMORY=20gb
 
+## FIXME: ADAPT MAKEFILE FOR FISHCOST
+
+
 ## Phony
 all: publish
 
