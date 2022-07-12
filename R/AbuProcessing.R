@@ -6,7 +6,7 @@
 #                                                                                        #
 ##########################################################################################
 
-# Last update: July, 2021
+# Last update: July, 2022
 
 
 # Code written and mantained by Marie-Christine Rufener
@@ -32,8 +32,7 @@ rm(list=ls())
 # 1) Load results
 #~~~~~~~~~~~~~~~~~~
 
-#Code lines below are not the pretties, but it works :)
-#FIXME: I'll be making the below lines more efficient in due time!
+#Code lines below are not the pretties, but they work :)
 
 
 
